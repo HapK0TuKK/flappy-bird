@@ -1,0 +1,160 @@
+import pygame as pg
+import random
+
+
+class Bird(pg.sprite.Sprite):
+    def __init__(self):
+        super(Bird, self).__init__()
+        self.image = image
+        self.rect = self.image.get_rect()
+        self.rect.x = 100
+        self.rect.y = 500
+
+    def update(self):
+        global jumpcount, current_state
+        if 1000 > self.rect.y > 0:
+            self.rect.y -= jumpcount
+            jumpcount -= 1
+        else:
+            current_state = 3
+
+
+class Obstacles(pg.sprite.Sprite):
+    def __init__(self, rotate, dop, xcor):
+        global a
+        super(Obstacles, self).__init__()
+        self.image = pipe_image
+        self.image = pg.transform.rotate(self.image, rotate)
+        self.rect = self.image.get_rect()
+        self.rect.x = xcor
+        self.distance = 1300
+        self.is_coin = False
+        if dop == 0:
+            self.dop = 0
+            self.rotate = 0
+            self.rect.y = random.randint(-1300, -800)
+            a = self.rect.y
+        elif dop == 1:
+            self.dop = 1
+            self.rotate = 180
+            self.rect.y = a + 1800
+
+    def update(self):
+        global x, coins
+        self.rect.x -= 10
+        x = self.rect.x
+        if self.rect.x < -500:
+            self.is_coin = False
+            self.__init__(self.rotate, self.dop, 2000)
+        if self.rect.x < 100:
+            if not self.is_coin:
+                coins += 0.5
+                self.is_coin = True
+
+
+# Нужные переменные
+FPS = 60
+isJump = False
+jumpcount = 15
+current_state = 0
+game_over_sound = 0
+a = 0
+x = 0
+coins = 0
+
+# Всё для pygame
+pg.init()
+clock = pg.time.Clock()
+screen = pg.display.set_mode((0, 0), pg.FULLSCREEN)
+
+# Текст
+base_font = pg.font.SysFont('Arial', 75, True)
+
+# Птица
+bird_image = pg.image.load('bird.png').convert_alpha()
+image = pg.transform.scale(bird_image, (bird_image.get_width() // 4, bird_image.get_height() // 4))
+
+# Монета
+coin = pg.image.load('coin.png').convert_alpha()
+coin_image = pg.transform.scale(coin, (coin.get_width() // 6, coin.get_height() // 6))
+
+# Труба
+pipe_image = pg.image.load('труба.png').convert_alpha()
+
+# Задний фон
+background_image = pg.image.load('bg.png').convert_alpha()
+
+# Звуки
+jump_sound = pg.mixer.Sound('Jump.wav')
+hit_sound = pg.mixer.Sound('hit.wav')
+
+# Классы
+player = Bird()
+player_group = pg.sprite.Group()
+player_group.add(player)
+pipe_1 = Obstacles(0, 0, 800)
+pipe_2 = Obstacles(180, 1, 800)
+pipe_3 = Obstacles(0, 0, 1300)
+pipe_4 = Obstacles(180, 1, 1300)
+pipe_5 = Obstacles(0, 0, 1800)
+pipe_6 = Obstacles(180, 1, 1800)
+pipe_7 = Obstacles(0, 0, 2300)
+pipe_8 = Obstacles(180, 1, 2300)
+pipe_9 = Obstacles(0, 0, 2800)
+pipe_10 = Obstacles(180, 1, 2800)
+pipe_group = pg.sprite.Group(pipe_1, pipe_2, pipe_3, pipe_4, pipe_5, pipe_6, pipe_7, pipe_8, pipe_9, pipe_10)
+
+while True:
+    for i in pg.event.get():
+        if i.type == pg.KEYDOWN:
+            if i.key == pg.K_ESCAPE:
+                print(coins)
+                pg.quit()
+            elif i.key == pg.K_SPACE and current_state != 3:
+                isJump = True
+                jumpcount = 15
+                if current_state != 3:
+                    jump_sound.play()
+                current_state = 1
+            elif i.key == pg.K_p:
+                if current_state == 1:
+                    current_state = 2
+                elif current_state == 2:
+                    current_state = 1
+        if i.type == pg.MOUSEBUTTONDOWN and current_state != 3:
+            if i.button == 1:
+                isJump = True
+                jumpcount = 15
+                if current_state != 3:
+                    jump_sound.play()
+                current_state = 1
+
+    # Начало игры
+    if current_state == 0 or current_state == 2:
+        screen.blit(background_image, (0, 0))
+        player_group.draw(screen)
+        pipe_group.draw(screen)
+    # В процессе игры
+    elif current_state == 1:
+        screen.blit(background_image, (0, 0))
+        player_group.draw(screen)
+        pipe_group.draw(screen)
+        if pg.sprite.spritecollideany(player, pipe_group):
+            current_state = 3
+        # Прыжок
+        if isJump:
+            player.update()
+        pipe_group.update()
+    
+    # Проигрыш
+    elif current_state == 3:
+        if game_over_sound == 0:
+            hit_sound.play()
+            game_over_sound = 1
+    screen.blit(coin_image, (10, 10))
+    coins = int(coins)
+    text = base_font.render(f'{coins}', True, (255, 255, 255))
+    screen.blit(text, (100, 10))
+    # Обновление экрана
+    pg.display.update()
+    clock.tick(FPS)
